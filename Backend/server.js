@@ -1,78 +1,63 @@
+require('dotenv').config();
 const express = require("express");
 const bodyParser = require("body-parser");
-const bcrypt = require("bcryptjs");
-const fs = require("fs");
+const { MongoClient } = require('mongodb');
 
 const app = express();
 const port = 3000;
-const dbFile = "users.json";
 
-// Middleware
 app.use(bodyParser.json());
 
-// Initialize JSON file if it doesn't exist
-if (!fs.existsSync(dbFile)) {
-    fs.writeFileSync(dbFile, JSON.stringify([]));
+const uri = process.env.MONGO_URI;
+
+if (!uri) {
+    console.error("MONGO_URI is not defined. Check your .env file.");
+    process.exit(1);
 }
 
-// Load users from JSON file
-const loadUsers = () => {
-    const data = fs.readFileSync(dbFile);
-    return JSON.parse(data);
-};
+console.log("Mongo URI:", uri);
 
-// Save users to JSON file
-const saveUsers = (users) => {
-    fs.writeFileSync(dbFile, JSON.stringify(users, null, 2));
-};
+const client = new MongoClient(uri);
+let db;
 
-// Registration endpoint
-app.post("/register", async (req, res) => {
-    const { name, email, password, phone_number } = req.body;
-
-    if (!name || !email || !password || !phone_number) {
-        return res.status(400).json({ error: "All fields are required" });
-    }
-
+async function startServer() {
     try {
-        const users = loadUsers();
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const newUser = { id: Date.now(), name, email, password: hashedPassword, phone_number };
-        users.push(newUser);
-        saveUsers(users);
-        res.status(201).json({ message: "User registered successfully", userId: newUser.id });
+        console.log("Connecting to MongoDB...");
+        await client.connect();
+        db = client.db("AgriSenseDB");
+        console.log("Connected to MongoDB");
+
+        // Define your routes after the database connection
+        app.post("/register", async (req, res) => {
+            const { name, email, password, phone_number } = req.body;
+
+            if (!name || !email || !password || !phone_number) {
+                return res.status(400).json({ error: "All fields are required" });
+            }
+
+            try {
+                const existingUser = await db.collection("users").findOne({ email });
+                if (existingUser) {
+                    return res.status(400).json({ error: "User already exists" });
+                }
+
+                const result = await db.collection("users").insertOne({ name, email, password, phone_number });
+                res.status(201).json({ message: "User registered successfully", userId: result.insertedId });
+            } catch (error) {
+                console.error("Error during registration:", error);
+                res.status(500).json({ error: "Failed to register user" });
+            }
+        });
+
+        // Start the server after successful DB connection
+        app.listen(port, () => {
+            console.log(`Server is running on http://127.0.0.1:${port}`);
+        });
     } catch (error) {
-        res.status(500).json({ error: "Failed to register user" });
+        console.error("Failed to connect to MongoDB:", error);
+        process.exit(1);
     }
-});
+}
 
-// Login endpoint
-app.post("/login", async (req, res) => {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-        return res.status(400).json({ error: "Email and password are required" });
-    }
-
-    try {
-        const users = loadUsers();
-        const user = users.find(user => user.email === email);
-        if (!user) {
-            return res.status(400).json({ error: "User not found" });
-        }
-
-        const isPasswordValid = await bcrypt.compare(password, user.password);
-        if (!isPasswordValid) {
-            return res.status(400).json({ error: "Invalid password" });
-        }
-
-        res.status(200).json({ message: "Login successful", userId: user.id });
-    } catch (error) {
-        res.status(500).json({ error: "Failed to log in" });
-    }
-});
-
-// Start the server
-app.listen(port, () => {
-    console.log(`Server is running on http://127.0.0.1:${port}`);
-});
+// Call the function to start the server
+startServer();
