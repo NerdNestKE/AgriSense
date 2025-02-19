@@ -1,28 +1,54 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const bcrypt = require("bcryptjs");
-const mongoose = require("mongoose");
-require("dotenv").config();
+const { Sequelize, DataTypes } = require("sequelize");
+require("dotenv").config({path:"./.env"});
 
-// Import User model
-const User = require("./src/models/User");
-
+// Initialize Express app
 const app = express();
 const port = process.env.PORT || 3000;
 
 // Middleware
 app.use(bodyParser.json());
 
-// Connect to MongoDB
-mongoose
-  .connect(process.env.MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
+// Connect to PostgreSQL with Sequelize
+const sequelize = new Sequelize(
+  process.env.POSTGRES_DB,
+  process.env.POSTGRES_USER,
+  process.env.POSTGRES_PASSWORD,
+  {
+    host: process.env.POSTGRES_HOST,
+    dialect: "postgres",
+    logging: false, // Disable logging for cleaner console output
+  }
+);
+
+// Define User Model
+const User = sequelize.define("User", {
+  id: { type: DataTypes.UUID, defaultValue: Sequelize.UUIDV4, primaryKey: true },
+  name: { type: DataTypes.STRING, allowNull: false },
+  email: { type: DataTypes.STRING, allowNull: false, unique: true },
+  password: { type: DataTypes.STRING, allowNull: false },
+  phone_number: { type: DataTypes.STRING, allowNull: false },
+});
+
+// Sync the database and start the server
+sequelize
+  .authenticate()
+  .then(() => {
+    console.log("Connected to PostgreSQL successfully!");
+
+    return sequelize.sync(); // Ensure models are created
   })
-  .then(() => console.log("Connected to MongoDB successfully!"))
+  .then(() => {
+    console.log("Database synchronized!");
+
+    app.listen(port, () => {
+      console.log("Server is running on http://127.0.0.1:${port}");
+    });
+  })
   .catch((error) => {
-    console.error("Failed to connect to MongoDB:", error.message);
-    process.exit(1);
+    console.error("Database connection error:", error.message);
   });
 
 // Registration endpoint
@@ -35,7 +61,7 @@ app.post("/register", async (req, res) => {
 
   try {
     // Check if user already exists
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ where: { email } });
     if (existingUser) {
       return res.status(400).json({ error: "Email already exists" });
     }
@@ -43,16 +69,8 @@ app.post("/register", async (req, res) => {
     // Hash the password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create a new user
-    const newUser = new User({
-      name,
-      email,
-      password: hashedPassword,
-      phone_number,
-    });
-
-    // Save user to the database
-    await newUser.save();
+    // Create new user
+    const newUser = await User.create({ name, email, password: hashedPassword, phone_number });
 
     res.status(201).json({ message: "User registered successfully", user: newUser });
   } catch (error) {
@@ -69,8 +87,8 @@ app.post("/login", async (req, res) => {
   }
 
   try {
-    // Find the user by email
-    const user = await User.findOne({ email });
+    // Find user by email
+    const user = await User.findOne({ where: { email } });
     if (!user) {
       return res.status(400).json({ error: "Invalid email or password" });
     }
@@ -85,9 +103,4 @@ app.post("/login", async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: "Failed to log in", details: error.message });
   }
-});
-
-// Start the server
-app.listen(port, () => {
-  console.log(`Server is running on http://127.0.0.1:${port}`);
 });

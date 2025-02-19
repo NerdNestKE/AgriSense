@@ -1,23 +1,20 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "main": "agriserver.js",
+  "main": "src/agriserver.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node agriserver.js"
+    "start": "node src/agriserver.js"
   },
   "keywords": [],
   "author": "NerdNestKE",
   "license": "ISC",
   "description": "",
   "dependencies": {
-<<<<<<< HEAD
     "bcryptjs": "^2.4.3",
     "dotenv": "^16.4.7",
-    "express": "^4.21.2"
-=======
     "express": "^4.21.2",
-    "sqlite": "^5.1.1"
->>>>>>> 702cb48 (Set up MongoDB integration and user authentication)
+    "pg": "^8.13.3",
+    "sequelize": "^6.35.0"
   }
 }
