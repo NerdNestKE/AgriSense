@@ -4,8 +4,11 @@
   "main": "src/agriserver.js",
   "type": "module",
   "scripts": {
+    
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node src/agriserver.js"
+    "start": "node src/agriserver.js",
+    "dev": "nodemon src/agriserver.js"
+    
   },
   "keywords": [],
   "author": "NerdNestKE",
