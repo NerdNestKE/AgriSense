@@ -14,7 +14,6 @@ app.use(express.json());
 
 //user routes
 app.use("/api/users", userRoutes);
-console.log("Users routes are registered")
 
 // Database Connection
 sequelize
