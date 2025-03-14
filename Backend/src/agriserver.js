@@ -8,12 +8,21 @@ dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 3000;
+const cors = require("cors");
+
+app.use(cors());
 
 // Middleware
 app.use(express.json());
 
 //user routes
 app.use("/api/users", userRoutes);
+
+
+app.get("/", (req, res) => {
+  res.send("CORS is enabled!");
+});
+
 
 // Database Connection
 sequelize
