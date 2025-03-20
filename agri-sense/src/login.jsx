@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { Link } from 'react-router-dom';
+
 import "./login.css"; // Importing the CSS file
 
 const LoginPage = () => {
@@ -71,6 +73,7 @@ const LoginPage = () => {
         </form>
         <div className="ForgotPassword">
           <a href="#"><i>Forgot Password?</i></a>
+          <p>Dont have an account? <Link to="/signup">Sign up</Link></p>
         </div>
       </div>
     </div>
